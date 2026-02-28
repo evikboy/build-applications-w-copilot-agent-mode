@@ -16,7 +16,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+import os
 from . import views
+
 
 router = DefaultRouter()
 router.register(r'users', views.UserViewSet, basename='user')
@@ -25,8 +28,34 @@ router.register(r'activities', views.ActivityViewSet, basename='activity')
 router.register(r'workouts', views.WorkoutViewSet, basename='workout')
 router.register(r'leaderboard', views.LeaderboardViewSet, basename='leaderboard')
 
+# Custom API root to use $CODESPACE_NAME for full URLs
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.reverse import reverse
+
+@api_view(['GET'])
+def api_root(request, format=None):
+    codespace_name = os.environ.get('CODESPACE_NAME')
+    if codespace_name:
+        base_url = f"https://{codespace_name}-8000.app.github.dev/api/"
+        return Response({
+            'users': base_url + 'users/',
+            'teams': base_url + 'teams/',
+            'activities': base_url + 'activities/',
+            'workouts': base_url + 'workouts/',
+            'leaderboard': base_url + 'leaderboard/',
+        })
+    else:
+        return Response({
+            'users': request.build_absolute_uri(reverse('user-list')),
+            'teams': request.build_absolute_uri(reverse('team-list')),
+            'activities': request.build_absolute_uri(reverse('activity-list')),
+            'workouts': request.build_absolute_uri(reverse('workout-list')),
+            'leaderboard': request.build_absolute_uri(reverse('leaderboard-list')),
+        })
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.api_root, name='api-root'),
+    path('', api_root, name='api-root'),
     path('api/', include(router.urls)),
 ]
